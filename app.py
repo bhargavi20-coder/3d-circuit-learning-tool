@@ -20,4 +20,4 @@ if os.path.exists(html_file_path):
     # Render the interactive 3D application inside Streamlit
     components.html(html_content, height=850, scrolling=False)
 else:
-    st.error("Error: 'visualizer.html' not found in your project folder! Please make sure both app.py and visualizer.html are in C:\\Users\\bharg\\OneDrive\\Desktop\\circuit_3d_app.")
+    st.error("Error: 'visualizer.html' not found in your project folder! Make sure both app.py and visualizer.html are in the exact same folder.")
