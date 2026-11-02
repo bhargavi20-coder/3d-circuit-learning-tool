@@ -2,158 +2,140 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 
-st.set_page_config(page_title="3D Virtual Circuit Lab (Tinkercad Style)", layout="wide")
+st.set_page_config(page_title="3D Virtual Circuit Lab", layout="wide")
 
 st.title("⚡ 3D Interactive Circuit & Microcontroller Workbench")
-st.write("Place components, wire nodes, inspect microcontroller pins, and simulate circuits in 3D.")
+st.write("Select components, choose pins, and connect virtual jumper wires in 3D.")
 
-# --- SESSION STATE INITIALIZATION ---
+# --- SESSION STATE FOR WIRING ---
+if "connections" not in st.session_state:
+    st.session_state.connections = [("3V3", "Breadboard Power (+)", "red")]
 if "selected_component" not in st.session_state:
     st.session_state.selected_component = "ESP32 DevKit"
-if "inspected_pin" not in st.session_state:
-    st.session_state.inspected_pin = "GPIO21"
 
-# --- SIDEBAR: COMPONENT TOOLBOX ---
-st.sidebar.header("🧰 Component Toolbox")
-chosen_item = st.sidebar.selectbox(
-    "Choose Microcontroller / Module", 
-    ["ESP32 DevKit", "Arduino Uno", "Resistor (220Ω)", "LED (Red)", "Buzzer"]
-)
+# --- SIDEBAR: WIRING WORKBENCH ---
+st.sidebar.header("🔌 Jumper Wire Manager")
+st.sidebar.write("Connect two pins to complete your circuit loop:")
 
-if st.sidebar.button("➕ Select/Place Component"):
-    st.session_state.selected_component = chosen_item
+available_pins = [
+    "3V3", "GND", "VIN", 
+    "GPIO21 (SDA)", "GPIO22 (SCL)", "GPIO23", "GPIO18", 
+    "LED Anode (+)", "LED Cathode (-)", 
+    "Resistor Terminal 1", "Resistor Terminal 2",
+    "Breadboard Power (+)", "Breadboard Ground (-)"
+]
+
+wire_start = st.sidebar.selectbox("From Pin / Node", available_pins, index=0)
+wire_end = st.sidebar.selectbox("To Pin / Node", available_pins, index=7)
+wire_color = st.sidebar.selectbox("Wire Color", ["red", "black", "blue", "green", "yellow", "orange"])
+
+col_btn1, col_btn2 = st.sidebar.columns(2)
+if col_btn1.button("➕ Connect Wire"):
+    new_conn = (wire_start, wire_end, wire_color)
+    if new_conn not in st.session_state.connections:
+        st.session_state.connections.append(new_conn)
+        st.sidebar.success(f"Connected {wire_start} to {wire_end}!")
+
+if col_btn2.button("🗑️ Clear Wires"):
+    st.session_state.connections = []
+    st.sidebar.info("All wires cleared.")
 
 st.sidebar.markdown("---")
-st.sidebar.header("📊 Virtual Multimeter")
-multimeter_mode = st.sidebar.radio("Mode", ["Voltage (V)", "Current (mA)", "Resistance (Ω)"])
-if multimeter_mode == "Voltage (V)":
-    st.sidebar.metric("Multimeter Readout", "3.30 V", "DC")
-elif multimeter_mode == "Current (mA)":
-    st.sidebar.metric("Multimeter Readout", "15.4 mA", "DC")
-else:
-    st.sidebar.metric("Multimeter Readout", "330.0 Ω")
+st.sidebar.header("🧰 Component Selection")
+chosen_item = st.sidebar.selectbox("Active Module", ["ESP32 DevKit", "Arduino Uno", "LED & Resistor Circuit"])
+if st.sidebar.button("Load Module"):
+    st.session_state.selected_component = chosen_item
 
-# --- MAIN LAYOUT: CANVAS & PIN INSPECTOR ---
-col_canvas, col_inspector = st.columns([2, 1])
+# --- MAIN LAYOUT ---
+col_canvas, col_info = st.columns([2, 1])
 
-with col_inspector:
-    st.subheader("🔍 Pin Inspector")
-    
-    # Comprehensive Pin Database for ESP32 & Arduino
-    pin_database = {
-        "GPIO21": "ESP32: SDA (I2C Data line). Used for communicating with OLED screens, sensors, etc.",
-        "GPIO22": "ESP32: SCL (I2C Clock line). Works alongside SDA for I2C bus communication.",
-        "GPIO23": "ESP32: MOSI pin for SPI communication peripherals.",
-        "GPIO18": "ESP32: SCK clock pin for SPI bus.",
-        "3V3": "ESP32: Provides regulated 3.3V power output to low-power sensors.",
-        "GND": "Ground reference pin (0V return path).",
-        "VIN": "External power input pin (typically 5V from USB).",
-        "D9 (PWM)": "Arduino: Digital PWM pin for analog output/dimming.",
-        "D13": "Arduino: Built-in LED test pin and SPI SCK."
-    }
-    
-    selected_inspect_pin = st.selectbox("Click/Select Pin to Inspect:", list(pin_database.keys()))
-    st.session_state.inspected_pin = selected_inspect_pin
-    
-    st.info(f"**Specifications for [{st.session_state.inspected_pin}]:**")
-    st.success(pin_database.get(st.session_state.inspected_pin, "Select a valid pin."))
+with col_info:
+    st.subheader("📋 Active Circuit Connections")
+    if st.session_state.connections:
+        for idx, (start, end, color) in enumerate(st.session_state.connections):
+            st.markdown(f"**{idx+1}.** <span style='color:{color};'>●</span> `{start}` ⟷ `{end}`", unsafe_allow_html=True)
+    else:
+        st.info("No wires connected yet. Use the sidebar to add connections.")
+        
+    st.markdown("---")
+    st.subheader("💡 Beginner's Guide")
+    st.success("To light an LED with an ESP32: Connect **3V3** to **LED Anode (+)**, and connect **LED Cathode (-)** through a **Resistor Terminal 1** to **GND**!")
 
 with col_canvas:
-    st.subheader(f"Workbench Canvas: Active Object -> {st.session_state.selected_component}")
+    st.subheader(f"Workbench Canvas: {st.session_state.selected_component}")
     
     fig = go.Figure()
 
-    # --- 1. RENDER REALISTIC BREADBOARD WITH VISIBLE HOLES ---
-    # Breadboard Base Plate
+    # 1. Breadboard Base
     fig.add_trace(go.Mesh3d(
         x=[-6, 6, 6, -6, -6, 6, 6, -6],
         y=[-3.5, -3.5, 3.5, 3.5, -3.5, -3.5, 3.5, 3.5],
         z=[-0.4, -0.4, -0.4, -0.4, 0, 0, 0, 0],
-        color='whitesmoke', opacity=0.95, name='Breadboard Body'
+        color='whitesmoke', opacity=0.9, name='Breadboard'
     ))
 
-    # Generate Grid Holes (Tie-points) across the breadboard surface
-    hole_x, hole_y, hole_z = [], [], []
+    # Grid Holes
+    hx, hy, hz = [], [], []
     for x in np.linspace(-5, 5, 21):
-        for y in [-2.0, -1.0, 1.0, 2.0]:  # Power and terminal strip rows
-            hole_x.append(x)
-            hole_y.append(y)
-            hole_z.append(0.01)
+        for y in [-2.0, -1.0, 1.0, 2.0]:
+            hx.append(x); hy.append(y); hz.append(0.01)
+    fig.add_trace(go.Scatter3d(x=hx, y=hy, z=hz, mode='markers', marker=dict(size=3, color='dimgray'), name='Holes'))
 
-    fig.add_trace(go.Scatter3d(
-        x=hole_x, y=hole_y, z=hole_z,
-        mode='markers',
-        marker=dict(size=3, color='dimgray', symbol='circle'),
-        name='Breadboard Holes'
-    ))
-
-    # --- 2. RENDER DUAL-ROW MICROCONTROLLER (ESP32 / Arduino) ---
+    # 2. Microcontroller / Components Render
     if "ESP32" in st.session_state.selected_component:
-        # ESP32 Black Board Body
+        # Board Body
         fig.add_trace(go.Mesh3d(
             x=[-2.5, 2.5, 2.5, -2.5, -2.5, 2.5, 2.5, -2.5],
             y=[-1.2, -1.2, 1.2, 1.2, -1.2, -1.2, 1.2, 1.2],
             z=[0, 0, 0, 0, 0.35, 0.35, 0.35, 0.35],
-            color='black', name='ESP32 Module'
+            color='black', name='ESP32'
         ))
-        
-        # Left Row Pins
-        left_pins_x = np.linspace(-2.2, 2.2, 6)
+        # Pin Headers
+        px = np.linspace(-2.2, 2.2, 4)
         fig.add_trace(go.Scatter3d(
-            x=left_pins_x, y=[-1.2 * np.ones(6)], z=[0.45 * np.ones(6)],
-            mode='markers+text',
-            text=['3V3', 'GND', 'GPIO21', 'GPIO22', 'GPIO23', 'GPIO18'],
-            textposition='bottom center',
-            marker=dict(size=6, color='silver'),
-            name='ESP32 Left Header'
-        ))
-        
-        # Right Row Pins
-        fig.add_trace(go.Scatter3d(
-            x=left_pins_x, y=[1.2 * np.ones(6)], z=[0.45 * np.ones(6)],
-            mode='markers+text',
-            text=['VIN', 'GND', 'GPIO4', 'GPIO2', 'GPIO15', 'EN'],
-            textposition='top center',
-            marker=dict(size=6, color='silver'),
-            name='ESP32 Right Header'
+            x=px, y=[-1.2, -1.2, -1.2, -1.2], z=[0.45, 0.45, 0.45, 0.45],
+            mode='markers+text', text=['3V3', 'GND', 'GPIO21', 'GPIO22'],
+            textposition='bottom center', marker=dict(size=7, color='silver'), name='Pins'
         ))
 
-    elif "Arduino" in st.session_state.selected_component:
-        # Arduino Blue Board Body
-        fig.add_trace(go.Mesh3d(
-            x=[-3, 3, 3, -3, -3, 3, 3, -3],
-            y=[-2, -2, 2, 2, -2, -2, 2, 2],
-            z=[0, 0, 0, 0, 0.35, 0.35, 0.35, 0.35],
-            color='dodgerblue', name='Arduino Uno'
-        ))
-        fig.add_trace(go.Scatter3d(
-            x=np.linspace(-2.5, 2.5, 5), y=[-2 * np.ones(5)], z=[0.45 * np.ones(5)],
-            mode='markers+text', text=['GND', '5V', 'D8', 'D9', 'D13'],
-            textposition='bottom center',
-            marker=dict(size=6, color='gold'), name='Arduino Headers'
-        ))
-    else:
-        # Passive / Output Component
-        fig.add_trace(go.Scatter3d(
-            x=[-1, 1], y=[0, 0], z=[0.5, 0.5],
-            mode='lines+markers', line=dict(color='crimson', width=10),
-            name=st.session_state.selected_component
-        ))
+    # 3. Dynamic 3D Wire Rendering based on Session State Connections
+    # Node coordinate mapping dictionary for 3D placement
+    node_coords = {
+        "3V3": (-2.2, -1.2, 0.45),
+        "GND": (-1.0, -1.2, 0.45),
+        "VIN": (2.2, -1.2, 0.45),
+        "GPIO21 (SDA)": (0.4, -1.2, 0.45),
+        "GPIO22 (SCL)": (2.2, -1.2, 0.45),
+        "GPIO23": (0.4, 1.2, 0.45),
+        "GPIO18": (2.2, 1.2, 0.45),
+        "LED Anode (+)": (2.0, 1.0, 0.8),
+        "LED Cathode (-)": (2.0, 0.0, 0.8),
+        "Resistor Terminal 1": (0.0, 1.0, 0.5),
+        "Resistor Terminal 2": (0.0, 0.0, 0.5),
+        "Breadboard Power (+)": (-4.0, -2.0, 0.0),
+        "Breadboard Ground (-)": (-4.0, 2.0, 0.0)
+    }
 
-    # Layout formatting for interactive rotation
+    for start_node, end_node, color in st.session_state.connections:
+        if start_node in node_coords and end_node in node_coords:
+            p1 = node_coords[start_node]
+            p2 = node_coords[end_node]
+            # Draw curved / arc jumper wire
+            mid_z = max(p1[2], p2[2]) + 1.2
+            fig.add_trace(go.Scatter3d(
+                x=[p1[0], (p1[0]+p2[0])/2, p2[0]],
+                y=[p1[1], (p1[1]+p2[1])/2, p2[1]],
+                z=[p1[2], mid_z, p2[2]],
+                mode='lines+markers',
+                line=dict(color=color, width=6),
+                marker=dict(size=4, color=color),
+                name=f"{start_node} → {end_node}"
+            ))
+
     fig.update_layout(
-        scene=dict(
-            xaxis=dict(title="X Grid"),
-            yaxis=dict(title="Y Grid"),
-            zaxis=dict(title="Z Height"),
-            aspectmode='data'
-        ),
+        scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False), aspectmode='data'),
         margin=dict(l=0, r=0, b=0, t=30),
         height=550
     )
 
     st.plotly_chart(fig, width='stretch')
-
-# --- EDUCATIONAL FOOTER ---
-st.markdown("---")
-st.success("✨ **Interactive Tip:** Click and rotate the 3D canvas to inspect how the microcontroller dual-row headers align directly over the breadboard grid tie-points!")
