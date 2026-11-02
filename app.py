@@ -1,100 +1,141 @@
 import streamlit as st
-import numpy as np
 import plotly.graph_objects as go
+import numpy as np
 
-# Set Page Config
-st.set_page_config(page_title="Interactive 3D Circuit Workbench", layout="wide")
+st.set_page_config(page_title="3D Virtual Circuit Lab (Tinkercad Style)", layout="wide")
 
-st.title("⚡ 3D Interactive Circuit Workbench for Beginners")
-st.write("Construct simple circuits, explore 3D components, and understand electrical flow.")
+st.title("⚡ 3D Interactive Circuit & Microcontroller Workbench")
+st.write("Place components, wire nodes, inspect microcontroller pins, and simulate circuits in 3D.")
 
-# --- SIDEBAR CONTROLS ---
-st.sidebar.header("🔌 Circuit Parameters")
-battery_voltage = st.sidebar.slider("Battery Voltage (V)", 1.0, 12.0, 9.0, 0.5)
-resistor_value = st.sidebar.slider("Resistor Resistance (Ω)", 100, 1000, 330, 10)
-switch_state = st.sidebar.toggle("Close Switch", value=True)
+# --- SESSION STATE INITIALIZATION ---
+if "selected_component" not in st.session_state:
+    st.session_state.selected_component = "Arduino Uno"
+if "inspected_pin" not in st.session_state:
+    st.session_state.inspected_pin = "Select a pin on the 3D model"
 
-# --- CIRCUIT CALCULATIONS ---
-if switch_state:
-    current_ma = (battery_voltage / resistor_value) * 1000
-    led_status = "🟢 ON (Bright)" if current_ma >= 15 else "🟡 ON (Dim)"
-    if current_ma > 30:
-        led_status = "💥 BURNT OUT! (Too much current)"
+# --- SIDEBAR: COMPONENT TOOLBOX ---
+st.sidebar.header("🧰 Component Toolbox")
+component_category = st.sidebar.selectbox(
+    "Select Category", 
+    ["Microcontrollers", "Passive Components", "Active & Output", "Sensors"]
+)
+
+if component_category == "Microcontrollers":
+    chosen_item = st.sidebar.selectbox("Choose Model", ["Arduino Uno", "ESP32 DevKit"])
+elif component_category == "Passive Components":
+    chosen_item = st.sidebar.selectbox("Choose Component", ["Resistor (220Ω)", "Ceramic Capacitor (10µF)"])
+elif component_category == "Active & Output":
+    chosen_item = st.sidebar.selectbox("Choose Device", ["LED (Red)", "Buzzer", "NPN Transistor (2N2222)"])
 else:
-    current_ma = 0.0
-    led_status = "🔴 OFF"
+    chosen_item = st.sidebar.selectbox("Choose Sensor", ["DHT11 Temp/Humidity", "Ultrasonic (HC-SR04)"])
 
-# Display metrics
-col1, col2, col3 = st.columns(3)
-col1.metric("Voltage", f"{battery_voltage} V")
-col2.metric("Current", f"{current_ma:.2f} mA")
-col3.metric("LED Status", led_status)
+if st.sidebar.button("➕ Add to Workbench Canvas"):
+    st.session_state.selected_component = chosen_item
 
-# --- 3D VISUALIZATION ENGINE ---
-def draw_3d_circuit(voltage, current_active):
+st.sidebar.markdown("---")
+st.sidebar.header("📊 Virtual Multimeter")
+multimeter_mode = st.sidebar.radio("Mode", ["Voltage (V)", "Current (mA)", "Resistance (Ω)"])
+if multimeter_mode == "Voltage (V)":
+    st.sidebar.metric("Multimeter Readout", "4.98 V", "DC")
+elif multimeter_mode == "Current (mA)":
+    st.sidebar.metric("Multimeter Readout", "18.5 mA", "DC")
+else:
+      st.sidebar.metric("Multimeter Readout", "220.0 Ω")
+
+# --- MAIN LAYOUT: CANVAS & PIN INSPECTOR ---
+col_canvas, col_inspector = st.columns([2, 1])
+
+with col_inspector:
+    st.subheader("🔍 Pin Inspector")
+    st.info(f"**Active Inspection:** {st.session_state.inspected_pin}")
+    
+    # Dynamic Pin Descriptions Database
+    pin_database = {
+        "D9 (PWM)": "Digital Pin 9. Supports Pulse Width Modulation (PWM) for dimming LEDs or controlling motor speed.",
+        "GND": "Ground reference pin (0V). Completes the electrical return path back to the power source.",
+        "5V": "Regulated 5-volt power output pin used to supply external sensors and modules.",
+        "VIN": "Input voltage pin when powering the board externally via an AC/DC adapter or battery.",
+        "GPIO21": "General Purpose Input/Output pin on ESP32, frequently used for I2C SDA communication."
+    }
+    
+    clicked_query = st.selectbox("Simulate Pin Click Selection:", list(pin_database.keys()))
+    if st.button("Inspect Pin Details"):
+        st.session_state.inspected_pin = clicked_query
+    
+    if st.session_state.inspected_pin in pin_database:
+        st.success(pin_database[st.session_state.inspected_pin])
+    else:
+        st.write("Click a pin or select one above to view its technical specification and beginner guidelines.")
+
+with col_canvas:
+    st.subheader(f"Workbench Canvas: Active Object -> {st.session_state.selected_component}")
+    
+    # --- 3D RENDER ENGINE ---
     fig = go.Figure()
 
-    # 1. Draw 3D Battery Block
+    # 1. Render Breadboard Base Plate
     fig.add_trace(go.Mesh3d(
-        x=[0, 1, 1, 0, 0, 1, 1, 0],
-        y=[0, 0, 2, 2, 0, 0, 2, 2],
-        z=[0, 0, 0, 0, 1.5, 1.5, 1.5, 1.5],
-        i=[7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-        j=[3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-        k=[0, 7, 5, 3, 6, 7, 1, 1, 5, 5, 7, 6],
-        color='gold', opacity=0.8, name='9V Battery'
+        x=[-5, 5, 5, -5, -5, 5, 5, -5],
+        y=[-3, -3, 3, 3, -3, -3, 3, 3],
+        z=[-0.5, -0.5, -0.5, -0.5, 0, 0, 0, 0],
+        color='ivory', opacity=0.9, name='Breadboard'
     ))
 
-    # 2. Draw 3D LED (Sphere + Cylinder base)
-    u = np.linspace(0, 2 * np.pi, 20)
-    v = np.linspace(0, np.pi, 20)
-    x_led = 4 + 0.4 * np.outer(np.cos(u), np.sin(v))
-    y_led = 1 + 0.4 * np.outer(np.sin(u), np.sin(v))
-    z_led = 1.5 + 0.4 * np.outer(np.ones(np.size(u)), np.cos(v))
+    # 2. Render Microcontroller / Component Body based on Selection
+    if "Arduino" in st.session_state.selected_component:
+        # Arduino Blue Board Box
+        fig.add_trace(go.Mesh3d(
+            x=[-2, 2, 2, -2, -2, 2, 2, -2],
+            y=[-1.5, -1.5, 1.5, 1.5, -1.5, -1.5, 1.5, 1.5],
+            z=[0, 0, 0, 0, 0.4, 0.4, 0.4, 0.4],
+            color='dodgerblue', name='Arduino Uno'
+        ))
+        # Add interactive clickable pin markers on Arduino header
+        fig.add_trace(go.Scatter3d(
+            x=[-1.8, -1.2, -0.6, 0, 0.6, 1.2, 1.8],
+            y=[1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5],
+            z=[0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+            mode='markers+text',
+            text=['GND', '5V', 'D8', 'D9', 'D10', 'D11', 'VIN'],
+            textposition='top center',
+            marker=dict(size=8, color='gold'),
+            name='Arduino Pins'
+        ))
+    elif "ESP32" in st.session_state.selected_component:
+        fig.add_trace(go.Mesh3d(
+            x=[-1.5, 1.5, 1.5, -1.5, -1.5, 1.5, 1.5, -1.5],
+            y=[-1, -1, 1, 1, -1, -1, 1, 1],
+            z=[0, 0, 0, 0, 0.3, 0.3, 0.3, 0.3],
+            color='black', name='ESP32 DevKit'
+        ))
+        fig.add_trace(go.Scatter3d(
+            x=[-1.2, 0, 1.2], y=[1, 1, 1], z=[0.4, 0.4, 0.4],
+            mode='markers+text', text=['GND', '3V3', 'GPIO21'],
+            marker=dict(size=8, color='silver'), name='ESP32 Pins'
+        ))
+    else:
+        # Generic Component 3D Representation
+        fig.add_trace(go.Scatter3d(
+            x=[0, 2], y=[0, 0], z=[0.5, 0.5],
+            mode='lines+markers', line=dict(color='crimson', width=10),
+            name=st.session_state.selected_component
+        ))
 
-    led_color = 'crimson' if current_active else 'gray'
-    fig.add_trace(go.Surface(x=x_led, y=y_led, z=z_led, colorscale=[[0, led_color], [1, led_color]], showscale=False, name="LED"))
-
-    # 3. Draw Connecting 3D Wires (Line Traces)
-    wire_color = "red" if current_active else "navy"
-
-    # Positive Rail Wires
-    fig.add_trace(go.Scatter3d(
-        x=[0.5, 0.5, 4], y=[2, 3, 3], z=[0.75, 0.75, 0.75],
-        mode='lines+markers', line=dict(color=wire_color, width=8), name='Positive Wire'
-    ))
-    # Resistor Connection to LED Wire
-    fig.add_trace(go.Scatter3d(
-        x=[4, 4], y=[3, 1.4], z=[0.75, 1.5],
-        mode='lines', line=dict(color=wire_color, width=8), name='LED Anode'
-    ))
-    # Ground Return Wire
-    fig.add_trace(go.Scatter3d(
-        x=[4, 4, 0.5, 0.5], y=[0.6, -1, -1, 0], z=[1.5, 0.75, 0.75, 0.75],
-        mode='lines', line=dict(color='black', width=8), name='Ground Wire'
-    ))
-
-    # 4. Layout formatting for Interactive 3D Orbiting
+    # Layout styling for rotation
     fig.update_layout(
         scene=dict(
-            xaxis=dict(visible=False),
-            yaxis=dict(visible=False),
-            zaxis=dict(visible=False),
+            xaxis=dict(title="X Axis (Breadboard Grid)"),
+            yaxis=dict(title="Y Axis"),
+            zaxis=dict(title="Z Axis"),
             aspectmode='data'
         ),
         margin=dict(l=0, r=0, b=0, t=30),
-        height=550
+        height=500
     )
-    return fig
 
-# Render Visualizer in Streamlit
-st.plotly_chart(draw_3d_circuit(battery_voltage, switch_state and current_ma <= 30), use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
-# Interactive Guidance Section
-st.subheader("💡 Beginner's AI Assistant Tip")
-if current_ma > 30:
-    st.error("Warning: The current is too high! An LED typically safely operates around 15-20 mA. Decrease voltage or increase resistance.")
-elif current_ma == 0:
-    st.info("The switch is OPEN. Close the switch in the sidebar to complete the loop circuit.")
-else:
-    st.success(f"Circuit operates safely! Ohm's Law in action: I = V / R = {battery_voltage}V / {resistor_value}Ω = {current_ma:.2f}mA.")
+# --- EDUCATIONAL HELPER ---
+st.markdown("---")
+st.subheader("💡 Circuit Assistant & Wiring Guide")
+st.success("Tip: Click and drag your mouse over the 3D canvas to rotate your board, inspect component node alignments, and verify wiring loops.")
