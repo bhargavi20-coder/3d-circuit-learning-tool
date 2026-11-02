@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Learn Arduino - 3D Interactive Workbench</title>
+    <title>Learn Arduino - Interactive Circuit Workbench</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4ecdf; color: #2c221e; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
@@ -11,82 +11,80 @@
         header {
             background-color: #faf5ec;
             border-bottom: 2px solid #e2d3be;
-            padding: 12px 24px;
+            padding: 10px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
         }
         .logo-area { display: flex; align-items: center; gap: 12px; }
-        .logo-icon { background: #1e1e1e; color: #fff; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
-        .title-text h1 { font-size: 18px; letter-spacing: 1px; color: #1e1e1e; font-weight: 800; }
-        .title-text span { font-size: 11px; text-transform: uppercase; color: #8c7a6b; letter-spacing: 2px; }
+        .logo-icon { background: #1e1e1e; color: #fff; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; }
+        .title-text h1 { font-size: 16px; letter-spacing: 1px; color: #1e1e1e; font-weight: 800; }
+        .title-text span { font-size: 10px; text-transform: uppercase; color: #8c7a6b; letter-spacing: 2px; }
 
-        .nav-center { display: flex; gap: 24px; font-size: 13px; font-weight: 600; color: #5a4d41; }
-        .nav-center span { cursor: pointer; padding-bottom: 4px; border-bottom: 2px solid transparent; }
-        .nav-center span.active { border-bottom: 2px solid #1e1e1e; color: #1e1e1e; }
+        .toolbar { display: flex; gap: 12px; align-items: center; }
+        .btn { background: #1e1e1e; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
+        .btn:hover { background: #333; }
+        .btn-green { background: #2d8a4e; }
+        .btn-green:hover { background: #236e3e; }
 
         /* Main Workspace Layout */
-        .workspace { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 150px); }
-        
-        #canvas-container { flex: 1; height: 100%; position: relative; background: #f4ecdf; }
+        .workspace { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 130px); }
+        #canvas-container { flex: 1; height: 100%; position: relative; background: #ece2d0; }
 
-        /* Right Documentation & Code Panel */
+        /* Right Panel: Wiring Manager & Code */
         .right-panel {
-            width: 380px;
+            width: 360px;
             background: #faf5ec;
             border-left: 2px solid #e2d3be;
             display: flex;
             flex-direction: column;
-            padding: 20px;
+            padding: 16px;
             box-shadow: -4px 0 15px rgba(0,0,0,0.03);
             flex-shrink: 0;
             overflow-y: auto;
         }
-        .tabs-header { display: flex; gap: 16px; border-bottom: 1px solid #e2d3be; padding-bottom: 8px; font-size: 12px; font-weight: 700; color: #8c7a6b; }
-        .tabs-header span { cursor: pointer; }
-        .tabs-header span.active { color: #1e1e1e; border-bottom: 2px solid #1e1e1e; padding-bottom: 6px; }
+        .section-title { font-size: 12px; font-weight: 700; color: #8c7a6b; text-transform: uppercase; margin-bottom: 8px; }
+        .control-group { margin-bottom: 14px; }
+        .control-group label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #5a4d41; }
+        .control-group select, .control-group input { width: 100%; padding: 6px 10px; border: 1px solid #dcd1c0; border-radius: 6px; font-size: 12px; background: #fff; }
 
-        .doc-content { margin-top: 16px; }
-        .doc-content h2 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #1e1e1e; }
-        .doc-content p { font-size: 13px; line-height: 1.5; color: #5a4d41; margin-bottom: 16px; }
-        
-        .code-box {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 14px;
-            border-radius: 8px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 12px;
-            line-height: 1.4;
-            margin-top: 12px;
+        .connection-log {
+            background: #fff;
+            border: 1px solid #dcd1c0;
+            border-radius: 6px;
+            height: 140px;
+            overflow-y: auto;
+            padding: 8px;
+            font-size: 11px;
+            font-family: monospace;
+            margin-bottom: 14px;
         }
+        .log-item { padding: 4px 6px; border-bottom: 1px solid #f0e6d6; display: flex; justify-content: space-between; }
 
         /* Bottom Lessons Dock */
         .lessons-dock {
-            height: 90px;
+            height: 80px;
             background: #faf5ec;
             border-top: 2px solid #e2d3be;
             display: flex;
             align-items: center;
-            padding: 0 24px;
-            gap: 16px;
+            padding: 0 20px;
+            gap: 12px;
             overflow-x: auto;
             flex-shrink: 0;
         }
         .lesson-card {
             background: #ffffff;
             border: 1px solid #e2d3be;
-            border-radius: 8px;
-            padding: 10px 16px;
-            min-width: 160px;
+            border-radius: 6px;
+            padding: 8px 12px;
+            min-width: 140px;
             cursor: pointer;
-            transition: all 0.2s ease;
         }
-        .lesson-card:hover { border-color: #1e1e1e; transform: translateY(-2px); }
         .lesson-card.active { border: 2px solid #1e1e1e; background: #fffcf7; }
-        .lesson-card span { font-size: 10px; color: #8c7a6b; font-weight: 700; text-transform: uppercase; }
-        .lesson-card h4 { font-size: 12px; font-weight: 700; color: #1e1e1e; margin-top: 2px; }
+        .lesson-card span { font-size: 9px; color: #8c7a6b; font-weight: 700; text-transform: uppercase; }
+        .lesson-card h4 { font-size: 11px; font-weight: 700; color: #1e1e1e; margin-top: 2px; }
     </style>
     <!-- Three.js Library CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -101,80 +99,91 @@
                 <span>Interactive 3D Workbench</span>
             </div>
         </div>
-        <div class="nav-center">
-            <span class="active">EXPLORE</span>
-            <span>UNDERSTAND</span>
-            <span>BUILD</span>
+        <div class="toolbar">
+            <span style="font-size: 12px; font-weight: 600; color: #5a4d41;">Mode: 🔌 Circuit Wiring</span>
         </div>
-        <div style="font-size: 12px; font-weight: 600; color: #8c7a6b;">ECE Project v1.0</div>
+        <div style="font-size: 11px; font-weight: 600; color: #8c7a6b;">ECE Project v1.0</div>
     </header>
 
     <div class="workspace">
         <div id="canvas-container"></div>
 
         <div class="right-panel">
-            <div class="tabs-header">
-                <span class="active">OVERVIEW</span>
-                <span>PINOUT</span>
-                <span>EXAMPLE</span>
-                <span>SPECS</span>
+            <div class="section-title">🔌 Jumper Wire Connection Tool</div>
+            
+            <div class="control-group">
+                <label>From Component / Pin</label>
+                <select id="start-pin">
+                    <option value="Arduino 5V">Arduino: 5V Power Pin</option>
+                    <option value="Arduino GND">Arduino: GND Ground Pin</option>
+                    <option value="Arduino D13">Arduino: Digital Pin 13 (LED)</option>
+                    <option value="Arduino D2">Arduino: Digital Pin 2 (Button)</option>
+                    <option value="LED Anode (+)">LED: Anode (+)</option>
+                    <option value="LED Cathode (-)">LED: Cathode (-)</option>
+                    <option value="Resistor Terminal 1">Resistor: Terminal 1</option>
+                    <option value="Resistor Terminal 2">Resistor: Terminal 2</option>
+                    <option value="Button Terminal 1">Push Button: Terminal 1</option>
+                </select>
             </div>
-            <div class="doc-content">
-                <h2 id="doc-title">Push a Button</h2>
-                <p id="doc-desc">Inputs let the board sense the world. A button connects pin 2 to 5V while pushed. Click the 3D button below to test the circuit logic live.</p>
-                
-                <div style="font-weight: 700; font-size: 11px; color: #8c7a6b; margin-bottom: 6px;">TRY IT YOURSELF CODE</div>
-                <div class="code-box" id="code-snippet">
-const int BUTTON_PIN = 2;<br>
-const int LED_PIN = 13;<br><br>
-void setup() {<br>
-&nbsp;&nbsp;pinMode(BUTTON_PIN, INPUT);<br>
-&nbsp;&nbsp;pinMode(LED_PIN, OUTPUT);<br>
-}<br><br>
-void loop() {<br>
-&nbsp;&nbsp;int state = digitalRead(BUTTON_PIN);<br>
-&nbsp;&nbsp;digitalWrite(LED_PIN, state);<br>
-}
-                </div>
+
+            <div class="control-group">
+                <label>To Component / Pin</label>
+                <select id="end-pin">
+                    <option value="LED Anode (+)">LED: Anode (+)</option>
+                    <option value="Resistor Terminal 1">Resistor: Terminal 1</option>
+                    <option value="Resistor Terminal 2">Resistor: Terminal 2</option>
+                    <option value="Arduino GND">Arduino: GND Ground Pin</option>
+                    <option value="Arduino D13">Arduino: Digital Pin 13 (LED)</option>
+                    <option value="Button Terminal 2">Push Button: Terminal 2</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Wire Color</label>
+                <select id="wire-color">
+                    <option value="red">🔴 Red (VCC / Power)</option>
+                    <option value="black">⚫ Black (Ground)</option>
+                    <option value="blue">🔵 Blue (Signal)</option>
+                    <option value="green">🟢 Green (Data)</option>
+                    <option value="orange">🟠 Orange (GPIO)</option>
+                </select>
+            </div>
+
+            <button class="btn btn-green" onclick="addWire()" style="width:100%; padding: 8px; margin-bottom: 12px;">➕ Connect Jumper Wire</button>
+            <button class="btn" onclick="clearWires()" style="width:100%; background:#c0392b; margin-bottom: 16px;">🗑️ Clear All Wires</button>
+
+            <div class="section-title">📋 Active Circuit Connections</div>
+            <div class="connection-log" id="wire-log">
+                <div class="log-item"><span>Arduino 5V ⟷ LED Anode (+)</span> <strong style="color:red">●</strong></div>
             </div>
         </div>
     </div>
 
     <div class="lessons-dock">
-        <div class="lesson-card" onclick="switchLesson(0)">
+        <div class="lesson-card active">
             <span>Lesson 1</span>
-            <h4>Meet the Board</h4>
+            <h4>Circuit Breadboarding</h4>
         </div>
-        <div class="lesson-card" onclick="switchLesson(1)">
+        <div class="lesson-card">
             <span>Lesson 2</span>
             <h4>Blink an LED</h4>
         </div>
-        <div class="lesson-card active" onclick="switchLesson(2)">
+        <div class="lesson-card">
             <span>Lesson 3</span>
             <h4>Push a Button</h4>
-        </div>
-        <div class="lesson-card" onclick="switchLesson(3)">
-            <span>Lesson 4</span>
-            <h4>Turn a Knob</h4>
-        </div>
-        <div class="lesson-card" onclick="switchLesson(4)">
-            <span>Lesson 5</span>
-            <h4>Mix Colours</h4>
         </div>
     </div>
 
     <script>
         const container = document.getElementById('canvas-container');
-        
-        // Get reliable dimensions
-        const width = container.clientWidth || window.innerWidth * 0.65;
-        const height = container.clientHeight || window.innerHeight - 150;
+        const width = container.clientWidth || window.innerWidth * 0.7;
+        const height = container.clientHeight || window.innerHeight - 130;
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf4ecdf);
 
         const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        camera.position.set(0, 10, 15);
+        camera.position.set(0, 12, 16);
         camera.lookAt(0, 0, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -190,58 +199,110 @@ void loop() {<br>
         dirLight.position.set(10, 20, 10);
         scene.add(dirLight);
 
-        // --- RENDER 3D ARDUINO UNO BOARD ---
-        const boardGroup = new THREE.Group();
+        // --- 1. RENDER ARDUINO UNO ---
+        const arduinoGroup = new THREE.Group();
+        const pcb = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.2, 3.5), new THREE.MeshStandardMaterial({ color: 0x1a4b84 }));
+        arduinoGroup.add(pcb);
         
-        // PCB Blue Base
-        const pcbGeo = new THREE.BoxGeometry(5, 0.2, 4);
-        const pcbMat = new THREE.MeshStandardMaterial({ color: 0x1a4b84, roughness: 0.3 });
-        const pcb = new THREE.Mesh(pcbGeo, pcbMat);
-        boardGroup.add(pcb);
+        // USB & Chip
+        const usb = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 1.0), new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.8 }));
+        usb.position.set(-1.8, 0.4, 0);
+        arduinoGroup.add(usb);
+        arduinoGroup.position.set(-3.5, 0, 0);
+        scene.add(arduinoGroup);
 
-        // USB Connector
-        const usbGeo = new THREE.BoxGeometry(1.0, 0.7, 1.2);
-        const usbMat = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.8, roughness: 0.2 });
-        const usb = new THREE.Mesh(usbGeo, usbMat);
-        usb.position.set(-2.0, 0.45, 0);
-        boardGroup.add(usb);
+        // --- 2. RENDER BREADBOARD ---
+        const breadboard = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.3, 3.5), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }));
+        breadboard.position.set(2.5, 0, 0);
+        scene.add(breadboard);
 
-        // ATmega328P Chip
-        const chipGeo = new THREE.BoxGeometry(1.0, 0.15, 1.0);
-        const chipMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
-        const chip = new THREE.Mesh(chipGeo, chipMat);
-        chip.position.set(0, 0.18, 0);
-        boardGroup.add(chip);
+        // --- 3. RENDER COMPONENTS ON BREADBOARD ---
+        // LED
+        const ledGroup = new THREE.Group();
+        const ledDome = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshStandardMaterial({ color: 0xe74c3c, transparent: true, opacity: 0.9 }));
+        ledDome.position.set(0, 0.5, 0);
+        ledGroup.add(ledDome);
+        ledGroup.position.set(1.5, 0.15, -0.5);
+        scene.add(ledGroup);
 
-        // Power Jack
-        const jackGeo = new THREE.BoxGeometry(1.0, 0.9, 1.0);
-        const jackMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-        const jack = new THREE.Mesh(jackGeo, jackMat);
-        jack.position.set(-2.0, 0.45, -1.3);
-        boardGroup.add(jack);
+        // Resistor
+        const resistor = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.8), new THREE.MeshStandardMaterial({ color: 0xd4ac0d }));
+        resistor.rotation.z = Math.PI / 2;
+        resistor.position.set(1.5, 0.3, 0.8);
+        scene.add(resistor);
 
-        boardGroup.position.set(0, 0, 0);
-        scene.add(boardGroup);
+        // Coordinate Mapping for Pins & Components
+        const pinCoords = {
+            "Arduino 5V": new THREE.Vector3(-3.5, 0.3, -1.2),
+            "Arduino GND": new THREE.Vector3(-3.5, 0.3, -0.8),
+            "Arduino D13": new THREE.Vector3(-3.5, 0.3, 0.8),
+            "Arduino D2": new THREE.Vector3(-3.5, 0.3, 1.2),
+            "LED Anode (+)": new THREE.Vector3(1.5, 0.6, -0.5),
+            "LED Cathode (-)": new THREE.Vector3(1.5, 0.2, -0.5),
+            "Resistor Terminal 1": new THREE.Vector3(1.5, 0.3, 0.4),
+            "Resistor Terminal 2": new THREE.Vector3(1.5, 0.3, 1.2),
+            "Button Terminal 1": new THREE.Vector3(3.0, 0.3, 0)
+        };
+
+        // Wire Storage Array
+        const wiresGroup = new THREE.Group();
+        scene.add(wiresGroup);
+
+        // Initial default wire
+        drawWire("Arduino 5V", "LED Anode (+)", "red");
+
+        function drawWire(startName, endName, colorName) {
+            const p1 = pinCoords[startName];
+            const p2 = pinCoords[endName];
+            if (!p1 || !p2) return;
+
+            const curve = new THREE.QuadraticBezierCurve3(
+                p1,
+                new THREE.Vector3((p1.x + p2.x) / 2, Math.max(p1.y, p2.y) + 1.8, (p1.z + p2.z) / 2),
+                p2
+            );
+
+            const points = curve.getPoints(50);
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ color: colorName, linewidth: 4 });
+            const wireLine = new THREE.Line(geometry, material);
+            wiresGroup.add(wireLine);
+        }
+
+        function addWire() {
+            const start = document.getElementById('start-pin').value;
+            const end = document.getElementById('end-pin').value;
+            const color = document.getElementById('wire-color').value;
+
+            if (start === end) {
+                alert("Cannot connect a pin to itself!");
+                return;
+            }
+
+            drawWire(start, end, color);
+
+            // Add to log
+            const logBox = document.getElementById('wire-log');
+            const item = document.createElement('div');
+            item.className = 'log-item';
+            item.innerHTML = `<span>${start} ⟷ ${end}</span> <strong style="color:${color}">●</strong>`;
+            logBox.appendChild(item);
+        }
+
+        function clearWires() {
+            while(wiresGroup.children.length > 0){ 
+                wiresGroup.remove(wiresGroup.children[0]); 
+            }
+            document.getElementById('wire-log').innerHTML = '<div class="log-item"><span>All wires cleared</span></div>';
+        }
 
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
-            boardGroup.rotation.y += 0.005;
             renderer.render(scene, camera);
         }
         animate();
 
-        // Lesson Switcher Logic
-        function switchLesson(index) {
-            document.querySelectorAll('.lesson-card').forEach((card, idx) => {
-                if(idx === index) card.classList.add('active');
-                else card.classList.remove('active');
-            });
-            const titles = ["Meet the Board", "Blink an LED", "Push a Button", "Turn a Knob", "Mix Colours"];
-            document.getElementById('doc-title').innerText = titles[index];
-        }
-
-        // Handle Window Resize
         window.addEventListener('resize', () => {
             const w = container.clientWidth;
             const h = container.clientHeight;
